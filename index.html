@@ -659,6 +659,11 @@
             const isValidImageSrc = (src) => {
                 if (!src || src.length === 0) return false;
                 // Check if it's a valid image source (data URL, blob URL, or http/https URL)
+                // Also exclude the current page URL which can appear when src is cleared
+                const currentPageUrl = window.location.href;
+                if (src === currentPageUrl || src === window.location.origin + '/' || src === window.location.origin) {
+                    return false;
+                }
                 return src.startsWith('data:') || src.startsWith('blob:') || src.startsWith('http://') || src.startsWith('https://');
             };
             
@@ -779,8 +784,10 @@
                 speakingImage.style.display = 'none';
             }
             
-            // Update message visibility after loading
-            updateNoImageMessage();
+            // Update message visibility after loading - use requestAnimationFrame to ensure DOM is updated
+            requestAnimationFrame(() => {
+                updateNoImageMessage();
+            });
         }
 
         async function switchAvatarSet(setIndex) {
