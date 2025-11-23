@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML PNGTuber</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #222222;
+            color: #fff;
+        }
+        .main-content {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            gap: 40px;
+            padding: 20px;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #fff;
+        }
+        .container {
+            text-align: left;
+            max-width: 400px;
+            width: 100%;
+            padding: 0 20px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 30px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        #startBtn {
+            margin-bottom: 0px;
+        }
+        .volume-container {
+            width: 100%;
+            height: 40px;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        .volume-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A, #FFC107, #FF9800, #F44336);
+            transition: width 0.1s ease-out;
+        }
+        .volume-text {
+            margin-top: 15px;
+            font-size: 18px;
+            color: #aaa;
+        }
+        .threshold-control {
+            margin-top: 25px;
+            margin-bottom: 20px;
+        }
+        .threshold-label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #ccc;
+        }
+        /* Slider styles - shared across all sliders */
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+            border: none;
+        }
+        .threshold-control,
+        .multiplier-control,
+        .delay-control {
+            margin-top: 25px;
+            margin-bottom: 20px;
+        }
+        .threshold-label,
+        .multiplier-label,
+        .delay-label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #ccc;
+        }
+        .threshold-value {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #888;
+        }
+        .multiplier-value,
+        .delay-value {
+            color: #888;
+        }
+        .background-color-control {
+            margin-top: 25px;
+        }
+        .background-color-label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #ccc;
+        }
+        .background-color-input {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .background-color-value {
+            color: #888;
+        }
+        .color-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .color-button {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border: 2px solid #555;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 0px;
+        }
+        .color-button:hover {
+            transform: scale(1.1);
+            border-color: #888;
+        }
+        .color-button.black {
+            background-color: #000000;
+        }
+        .color-button.white {
+            background-color: #FFFFFF;
+        }
+        .color-button.red {
+            background-color: #FF0000;
+        }
+        .color-button.green {
+            background-color: #00FF00;
+        }
+        .color-button.blue {
+            background-color: #0000FF;
+        }
+        .color-button.pink {
+            background-color: #FF00FF;
+        }
+        .status {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 5px;
+            min-height: 20px;
+        }
+        .status.speaking {
+            color: #4CAF50;
+        }
+        .status.none {
+            color: #666;
+        }
+        .file-input-container {
+            margin-top: 25px;
+            display: flex;
+            flex-direction: row;
+            gap: 15px;
+        }
+        .file-input-label {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 14px;
+            background: #555;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .file-input-label:hover {
+            background: #666;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .image-container {
+            width: 512px;
+            height: 512px;
+            background-color: #000000;
+            border: 64px solid #000000;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .no-image-message {
+            position: absolute;
+            color: #ccc;
+            font-size: 16px;
+            font-weight: 500;
+            padding: 30px 40px;
+            line-height: 1.6;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            max-width: 400px;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .loaded-image {
+            max-width: 512px;
+            max-height: 512px;
+            width: auto;
+            height: auto;
+        }
+        @keyframes bounceUp {
+            0% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-32px);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
+        .loaded-image.bounce {
+            animation: bounceUp 0.4s ease-out;
+        }
+        footer {
+            color: #666;
+        }
+        .avatar-switches {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .avatar-switch-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            background: #555;
+            color: white;
+            border: 2px solid #555;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 0px;
+        }
+        .avatar-switch-btn:hover {
+            background: #666;
+            border-color: #888;
+        }
+        .avatar-switch-btn.active {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+        hr {
+            margin: 25px 0;
+            border: none;
+            border-top: 1px solid #555;
+            width: 100%;
+        }
+        .language-switcher {
+            margin-top: 0;
+            display: flex;
+            gap: 8px;
+        }
+        .lang-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            background: #555;
+            color: white;
+            border: 2px solid #555;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 0px;
+        }
+        .lang-btn:hover {
+            background: #666;
+            border-color: #888;
+        }
+        .lang-btn.active {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="container">
+            <button id="startBtn" data-i18n="startMicrophone">Start Microphone</button>
+            <div class="multiplier-control">
+                <label class="multiplier-label" for="multiplierSlider" data-i18n="volumeMultiplier">
+                    Volume Sensitivity Multiplier: &nbsp;
+                    <span class="multiplier-value" id="multiplierValue">1.0x</span>
+                </label>
+                <input type="range" id="multiplierSlider" min="0.1" max="10" value="1" step="0.1">
+            </div>
+            <div class="volume-container">
+                <div class="volume-bar" id="volumeBar"></div>
+            </div>
+            <div class="volume-text" id="volumeText" data-i18n-prefix="volume">Volume: 0%</div>
+            <div class="status none" id="status" data-i18n="idle">idle</div>
+            <div class="threshold-control">
+                <label class="threshold-label" for="thresholdSlider" data-i18n="volumeThreshold">Volume Threshold:</label>
+                <input type="range" id="thresholdSlider" min="0" max="100" value="20">
+                <div class="threshold-value" id="thresholdValue" data-i18n-prefix="threshold">Threshold: 20%</div>
+            </div>
+            <div class="file-input-container">
+                <label for="idleImageInput" class="file-input-label" data-i18n="loadIdlePNG">Load Idle PNG</label>
+                <input type="file" id="idleImageInput" accept="image/png">
+                <label for="speakingImageInput" class="file-input-label" data-i18n="loadSpeakingPNG">Load Speaking PNG</label>
+                <input type="file" id="speakingImageInput" accept="image/png">
+            </div>
+            <div class="delay-control">
+                <label class="delay-label" for="delayInput" data-i18n="idleDelay">
+                    Idle Delay (ms): &nbsp;
+                    <span class="delay-value" id="delayValue">1000ms</span>
+                </label>
+                <input type="range" id="delayInput" min="0" max="5000" value="1000" step="100">
+            </div>
+            <div class="background-color-control">
+                <label class="background-color-label" for="backgroundColorInput" data-i18n="backgroundColor">
+                    Background Color (hex): &nbsp;
+                    <span class="background-color-value" id="backgroundColorValue">#000000</span>
+                </label>
+                <input type="text" id="backgroundColorInput" class="background-color-input" value="#000000" pattern="^#[0-9A-Fa-f]{6}$" placeholder="#00FF00">
+                <div class="color-buttons">
+                    <button class="color-button black" data-color="#000000"></button>
+                    <button class="color-button white" data-color="#FFFFFF"></button>
+                    <button class="color-button red" data-color="#FF0000"></button>
+                    <button class="color-button green" data-color="#00FF00"></button>
+                    <button class="color-button blue" data-color="#0000FF"></button>
+                    <button class="color-button pink" data-color="#FF00FF"></button>
+                </div>
+            </div>
+            <hr>
+            <div class="language-switcher">
+                <button class="lang-btn active" data-lang="en">English</button>
+                <button class="lang-btn" data-lang="zh-TW">繁體中文</button>
+            </div>
+        </div>
+        <div>
+            <div id="imageContainer" class="image-container">
+                <div id="noImageMessage" class="no-image-message" data-i18n="noImageMessage">No image loaded.<br><br>Click "Load Idle PNG" or "Load Speaking PNG" buttons to start</div>
+                <img id="idleImage" class="loaded-image" style="display: none;" alt="Idle image">
+                <img id="speakingImage" class="loaded-image" style="display: none;" alt="Speaking image">     
+            </div>
+            <div class="avatar-switches" style="text-align: center;">
+                <button class="avatar-switch-btn active" data-avatar-set="0" data-i18n="avatar1">Avatar 1</button>
+                <button class="avatar-switch-btn" data-avatar-set="1" data-i18n="avatar2">Avatar 2</button>
+                <button class="avatar-switch-btn" data-avatar-set="2" data-i18n="avatar3">Avatar 3</button>
+                <button class="avatar-switch-btn" data-avatar-set="3" data-i18n="avatar4">Avatar 4</button>
+                <button class="avatar-switch-btn" data-avatar-set="4" data-i18n="avatar5">Avatar 5</button>
+            </div>
+        </div>
+    </div>
+    <footer>HTML PNGTuber - @CaraguaWoof - 202511240200<br>github.com/caragua/html-pngtuber</footer>
+
+    <script>
+        let audioContext;
+        let analyser;
+        let microphone;
+        let dataArray;
+        let isRunning = false;
+        let idleTimeout = null;
+        let currentStatus = 'none';
+        let currentAvatarSet = 0; // Current avatar set (0-4)
+        let db = null; // IndexedDB database instance
+
+        // Initialize IndexedDB for image storage
+        function initIndexedDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('HTMLPNGTuberDB', 1);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    if (!database.objectStoreNames.contains('images')) {
+                        database.createObjectStore('images', { keyPath: 'key' });
+                    }
+                };
+            });
+        }
+
+        // Save image to IndexedDB
+        function saveImageToIndexedDB(key, dataUrl) {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject(new Error('Database not initialized'));
+                    return;
+                }
+                
+                // Convert data URL to Blob for more efficient storage
+                const byteString = atob(dataUrl.split(',')[1]);
+                const mimeString = dataUrl.split(',')[0].split(':')[1].split(';')[0];
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) {
+                    ia[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([ab], { type: mimeString });
+                
+                const transaction = db.transaction(['images'], 'readwrite');
+                const store = transaction.objectStore('images');
+                const request = store.put({ key: key, image: blob, dataUrl: dataUrl });
+                
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Load image from IndexedDB
+        function loadImageFromIndexedDB(key) {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject(new Error('Database not initialized'));
+                    return;
+                }
+                
+                const transaction = db.transaction(['images'], 'readonly');
+                const store = transaction.objectStore('images');
+                const request = store.get(key);
+                
+                request.onsuccess = () => {
+                    if (request.result) {
+                        resolve(request.result.dataUrl);
+                    } else {
+                        resolve(null);
+                    }
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        const startBtn = document.getElementById('startBtn');
+        const volumeBar = document.getElementById('volumeBar');
+        const volumeText = document.getElementById('volumeText');
+        const thresholdSlider = document.getElementById('thresholdSlider');
+        const thresholdValue = document.getElementById('thresholdValue');
+        const multiplierSlider = document.getElementById('multiplierSlider');
+        const multiplierValue = document.getElementById('multiplierValue');
+        const delayInput = document.getElementById('delayInput');
+        const delayValue = document.getElementById('delayValue');
+        const backgroundColorInput = document.getElementById('backgroundColorInput');
+        const backgroundColorValue = document.getElementById('backgroundColorValue');
+        const status = document.getElementById('status');
+        const imageContainer = document.getElementById('imageContainer');
+        const idleImageInput = document.getElementById('idleImageInput');
+        const speakingImageInput = document.getElementById('speakingImageInput');
+        const idleImage = document.getElementById('idleImage');
+        const speakingImage = document.getElementById('speakingImage');
+        const noImageMessage = document.getElementById('noImageMessage');
+
+        // Translation system
+        const translations = {
+            'en': {
+                'startMicrophone': 'Start Microphone',
+                'microphoneActive': 'Microphone Active',
+                'volumeMultiplier': 'Volume Visualization Multiplier:',
+                'volume': 'Volume:',
+                'idle': 'idle',
+                'speaking': 'speaking',
+                'volumeThreshold': 'Volume Threshold:',
+                'threshold': 'Threshold:',
+                'loadIdlePNG': 'Load Idle PNG',
+                'loadSpeakingPNG': 'Load Speaking PNG',
+                'idleDelay': 'Idle Delay (ms):',
+                'backgroundColor': 'Background Color (hex):',
+                'noImageMessage': 'No image loaded.<br><br>Click "Load Idle PNG" or "Load Speaking PNG" buttons to start',
+                'avatar1': 'Avatar 1',
+                'avatar2': 'Avatar 2',
+                'avatar3': 'Avatar 3',
+                'avatar4': 'Avatar 4',
+                'avatar5': 'Avatar 5',
+                'selectPNG': 'Please select a PNG file.',
+                'microphoneError': 'Failed to access microphone. Please allow microphone access.',
+                'invalidColor': 'Invalid (use #RRGGBB format)'
+            },
+            'zh-TW': {
+                'startMicrophone': '啟動麥克風',
+                'microphoneActive': '麥克風已啟動',
+                'volumeMultiplier': '音量顯示倍數：',
+                'volume': '音量：',
+                'idle': '待機',
+                'speaking': '說話中',
+                'volumeThreshold': '音量閾值：',
+                'threshold': '閾值：',
+                'loadIdlePNG': '載入待機 PNG',
+                'loadSpeakingPNG': '載入說話 PNG',
+                'idleDelay': '待機延遲（毫秒）：',
+                'backgroundColor': '背景顏色（十六進位）：',
+                'noImageMessage': '尚未載入圖片。<br><br>點擊「載入待機 PNG」或「載入說話 PNG」按鈕開始',
+                'avatar1': '頭像 1',
+                'avatar2': '頭像 2',
+                'avatar3': '頭像 3',
+                'avatar4': '頭像 4',
+                'avatar5': '頭像 5',
+                'selectPNG': '請選擇 PNG 檔案。',
+                'microphoneError': '無法存取麥克風。請允許麥克風存取權限。',
+                'invalidColor': '無效（請使用 #RRGGBB 格式）'
+            }
+        };
+
+        // Auto-detect browser language
+        function detectBrowserLanguage() {
+            // Check if user has a saved language preference
+            const savedLanguage = localStorage.getItem('pngtuber_language');
+            if (savedLanguage) {
+                return savedLanguage;
+            }
+            
+            // Get browser language preference
+            const browserLang = navigator.language || navigator.userLanguage || 'en';
+            
+            // Check if browser language is Traditional Chinese
+            // Supports: zh-TW, zh-Hant, zh-HK, zh-MO, and any zh variant
+            if (browserLang.toLowerCase().startsWith('zh')) {
+                // Check for Traditional Chinese variants
+                if (browserLang.toLowerCase().includes('tw') || 
+                    browserLang.toLowerCase().includes('hant') || 
+                    browserLang.toLowerCase().includes('hk') ||
+                    browserLang.toLowerCase().includes('mo')) {
+                    return 'zh-TW';
+                }
+                // For other zh variants, default to Traditional Chinese
+                return 'zh-TW';
+            }
+            
+            // Default to English for all other languages
+            return 'en';
+        }
+
+        let currentLanguage = detectBrowserLanguage();
+
+        // Function to update all text elements based on current language
+        function updateLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('pngtuber_language', lang);
+            
+            // Update all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (translations[lang] && translations[lang][key]) {
+                    element.innerHTML = translations[lang][key];
+                }
+            });
+
+            // Update elements with data-i18n-prefix (for dynamic content)
+            const volumeText = document.getElementById('volumeText');
+            const thresholdValue = document.getElementById('thresholdValue');
+            const multiplierValue = document.getElementById('multiplierValue');
+            const delayValue = document.getElementById('delayValue');
+            
+            // Update volume text (keep the percentage)
+            if (volumeText) {
+                const volumeMatch = volumeText.textContent.match(/(\d+)%/);
+                if (volumeMatch) {
+                    volumeText.textContent = `${translations[lang]['volume']} ${volumeMatch[1]}%`;
+                }
+            }
+
+            // Update threshold value (keep the percentage)
+            if (thresholdValue) {
+                const thresholdMatch = thresholdValue.textContent.match(/(\d+)%/);
+                if (thresholdMatch) {
+                    thresholdValue.textContent = `${translations[lang]['threshold']} ${thresholdMatch[1]}%`;
+                }
+            }
+
+            // Update language switcher buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                if (btn.getAttribute('data-lang') === lang) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Update status text if needed
+            if (status) {
+                if (currentStatus === 'none' || currentStatus === 'idle') {
+                    status.textContent = translations[lang]['idle'];
+                    status.className = 'status none';
+                } else if (currentStatus === 'speaking') {
+                    status.textContent = translations[lang]['speaking'];
+                    status.className = 'status speaking';
+                }
+            }
+        }
+
+        // Language switcher event listeners
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const lang = e.target.getAttribute('data-lang');
+                updateLanguage(lang);
+            });
+        });
+
+        // Initialize language on page load
+        updateLanguage(currentLanguage);
+
+        // Update no-image message visibility
+        function updateNoImageMessage() {
+            const isValidImageSrc = (src) => {
+                if (!src || src.length === 0) return false;
+                // Check if it's a valid image source (data URL, blob URL, or http/https URL)
+                return src.startsWith('data:') || src.startsWith('blob:') || src.startsWith('http://') || src.startsWith('https://');
+            };
+            
+            const hasIdleImage = isValidImageSrc(idleImage.src);
+            const hasSpeakingImage = isValidImageSrc(speakingImage.src);
+            
+            if (!hasIdleImage && !hasSpeakingImage) {
+                noImageMessage.style.display = 'block';
+            } else {
+                noImageMessage.style.display = 'none';
+            }
+        }
+
+        // Update background color on images
+        function updateImageBackgroundColor(color) {
+            imageContainer.style.backgroundColor = color;
+            imageContainer.style.borderColor = color;
+        }
+
+        // Helper function to resize image to fit max dimensions
+        function resizeImage(img, maxSize) {
+            const width = img.naturalWidth;
+            const height = img.naturalHeight;
+
+            if (width > maxSize || height > maxSize) {
+                const ratio = Math.min(maxSize / width, maxSize / height);
+                img.style.width = (width * ratio) + 'px';
+                img.style.height = (height * ratio) + 'px';
+            } else {
+                img.style.width = width + 'px';
+                img.style.height = height + 'px';
+            }
+        }
+
+        // Avatar set management functions
+        function getAvatarSetKey(setIndex, imageType) {
+            return `pngtuber_avatar${setIndex}_${imageType}`;
+        }
+
+        async function saveAvatarSetImages(setIndex) {
+            const idleKey = getAvatarSetKey(setIndex, 'idle');
+            const speakingKey = getAvatarSetKey(setIndex, 'speaking');
+            
+            if (idleImage.src && idleImage.src.startsWith('data:')) {
+                try {
+                    await saveImageToIndexedDB(idleKey, idleImage.src);
+                } catch (error) {
+                    console.error('Failed to save idle image to IndexedDB:', error);
+                }
+            }
+            if (speakingImage.src && speakingImage.src.startsWith('data:')) {
+                try {
+                    await saveImageToIndexedDB(speakingKey, speakingImage.src);
+                } catch (error) {
+                    console.error('Failed to save speaking image to IndexedDB:', error);
+                }
+            }
+        }
+
+        async function loadAvatarSetImages(setIndex) {
+            const idleKey = getAvatarSetKey(setIndex, 'idle');
+            const speakingKey = getAvatarSetKey(setIndex, 'speaking');
+            
+            let savedIdle = null;
+            let savedSpeaking = null;
+            
+            try {
+                savedIdle = await loadImageFromIndexedDB(idleKey);
+            } catch (error) {
+                console.error('Failed to load idle image from IndexedDB:', error);
+            }
+            
+            try {
+                savedSpeaking = await loadImageFromIndexedDB(speakingKey);
+            } catch (error) {
+                console.error('Failed to load speaking image from IndexedDB:', error);
+            }
+
+            if (savedIdle) {
+                idleImage.src = savedIdle;
+                if (idleImage.complete) {
+                    resizeImage(idleImage, 512);
+                    const statusText = status.textContent;
+                    if (statusText === 'idle' || statusText === 'none' || statusText === translations['en']['idle'] || statusText === translations['zh-TW']['idle'] || !statusText) {
+                        idleImage.style.display = 'block';
+                        speakingImage.style.display = 'none';
+                    }
+                    updateNoImageMessage();
+                } else {
+                    idleImage.onload = () => {
+                        resizeImage(idleImage, 512);
+                        const statusText = status.textContent;
+                        if (statusText === 'idle' || statusText === 'none' || statusText === translations['en']['idle'] || statusText === translations['zh-TW']['idle'] || !statusText) {
+                            idleImage.style.display = 'block';
+                            speakingImage.style.display = 'none';
+                        }
+                        updateNoImageMessage();
+                    };
+                }
+            } else {
+                idleImage.src = '';
+                idleImage.style.display = 'none';
+            }
+
+            if (savedSpeaking) {
+                speakingImage.src = savedSpeaking;
+                if (speakingImage.complete) {
+                    resizeImage(speakingImage, 512);
+                    updateNoImageMessage();
+                } else {
+                    speakingImage.onload = () => {
+                        resizeImage(speakingImage, 512);
+                        updateNoImageMessage();
+                    };
+                }
+            } else {
+                speakingImage.src = '';
+                speakingImage.style.display = 'none';
+            }
+            
+            // Update message visibility after loading
+            updateNoImageMessage();
+        }
+
+        async function switchAvatarSet(setIndex) {
+            // Save current avatar set before switching
+            await saveAvatarSetImages(currentAvatarSet);
+            
+            // Update current avatar set
+            currentAvatarSet = setIndex;
+            
+            // Update active button
+            document.querySelectorAll('.avatar-switch-btn').forEach((btn, index) => {
+                if (index === setIndex) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Load new avatar set
+            await loadAvatarSetImages(setIndex);
+        }
+
+        // Load settings from localStorage
+        async function loadSettings() {
+            // Initialize IndexedDB
+            try {
+                await initIndexedDB();
+            } catch (error) {
+                console.error('Failed to initialize IndexedDB:', error);
+            }
+            
+            const savedThreshold = localStorage.getItem('pngtuber_threshold');
+            const savedMultiplier = localStorage.getItem('pngtuber_multiplier');
+            const savedDelay = localStorage.getItem('pngtuber_delay');
+            const savedBackgroundColor = localStorage.getItem('pngtuber_backgroundColor');
+
+            if (savedThreshold !== null) {
+                thresholdSlider.value = savedThreshold;
+                thresholdValue.textContent = `${translations[currentLanguage]['threshold']} ${savedThreshold}%`;
+            }
+
+            if (savedMultiplier !== null) {
+                multiplierSlider.value = savedMultiplier;
+                multiplierValue.textContent = `${parseFloat(savedMultiplier).toFixed(1)}x`;
+            }
+
+            if (savedDelay !== null) {
+                delayInput.value = savedDelay;
+                delayValue.textContent = `${savedDelay}ms`;
+            }
+
+            if (savedBackgroundColor !== null) {
+                backgroundColorInput.value = savedBackgroundColor;
+                if (/^#[0-9A-Fa-f]{6}$/.test(savedBackgroundColor)) {
+                    updateImageBackgroundColor(savedBackgroundColor);
+                    backgroundColorValue.textContent = `${savedBackgroundColor.toUpperCase()}`;
+                } else {
+                    updateImageBackgroundColor('#000000');
+                    backgroundColorValue.textContent = `#000000`;
+                }
+            } else {
+                // Initialize background color to black if no saved value
+                updateImageBackgroundColor('#000000');
+            }
+
+
+            // Load current avatar set images
+            await loadAvatarSetImages(currentAvatarSet);
+            
+            // Update active avatar switch button
+            document.querySelectorAll('.avatar-switch-btn').forEach((btn, index) => {
+                if (index === currentAvatarSet) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Save settings to localStorage
+        function saveSettings() {
+            localStorage.setItem('pngtuber_threshold', thresholdSlider.value);
+            localStorage.setItem('pngtuber_multiplier', multiplierSlider.value);
+            localStorage.setItem('pngtuber_delay', delayInput.value);
+            localStorage.setItem('pngtuber_backgroundColor', backgroundColorInput.value);
+        }
+
+
+        // Safe localStorage setter with quota error handling
+        function safeLocalStorageSet(key, value) {
+            try {
+                localStorage.setItem(key, value);
+                return true;
+            } catch (e) {
+                if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                    console.warn('localStorage quota exceeded. Attempting to free space...');
+                    // Try to clear old avatar sets to free space
+                    try {
+                        // Clear avatar sets 4, 3, 2, 1 in that order (keep set 0)
+                        for (let i = 4; i >= 1; i--) {
+                            localStorage.removeItem(getAvatarSetKey(i, 'idle'));
+                            localStorage.removeItem(getAvatarSetKey(i, 'speaking'));
+                        }
+                        // Try again
+                        localStorage.setItem(key, value);
+                        alert('Storage space was low. Cleared some avatar sets to free space.');
+                        return true;
+                    } catch (e2) {
+                        alert('Storage quota exceeded. Please clear some avatar sets or browser data.');
+                        console.error('Failed to save to localStorage:', e2);
+                        return false;
+                    }
+                } else {
+                    console.error('Error saving to localStorage:', e);
+                    return false;
+                }
+            }
+        }
+
+        // Save image to localStorage
+        function saveImage(imageElement, storageKey) {
+            if (imageElement.src && imageElement.src.startsWith('data:')) {
+                return safeLocalStorageSet(storageKey, imageElement.src);
+            }
+            return false;
+        }
+
+        // Load settings on page load
+        loadSettings().catch(error => {
+            console.error('Failed to load settings:', error);
+        });
+
+        async function startMicrophone() {
+            try {
+                // Request microphone access
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // Create audio context
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(stream);
+                
+                // Configure analyser
+                analyser.fftSize = 256;
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                
+                // Connect microphone to analyser
+                microphone.connect(analyser);
+                
+                // Update UI
+                startBtn.textContent = translations[currentLanguage]['microphoneActive'];
+                startBtn.disabled = true;
+                isRunning = true;
+                
+                // Start visualization
+                visualize();
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                alert(translations[currentLanguage]['microphoneError']);
+            }
+        }
+
+        function visualize() {
+            if (!isRunning) return;
+            
+            analyser.getByteTimeDomainData(dataArray);
+            
+            // Calculate RMS (Root Mean Square) for volume
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                const normalized = (dataArray[i] - 128) / 128;
+                sum += normalized * normalized;
+            }
+            const rms = Math.sqrt(sum / dataArray.length);
+            const rawVolume = rms * 100;
+            
+            // Apply multiplier to volume
+            const multiplier = parseFloat(multiplierSlider.value) || 1.0;
+            const volume = Math.min(rawVolume * multiplier, 100);
+            
+            // Update visual bar
+            volumeBar.style.width = volume + '%';
+            volumeText.textContent = `${translations[currentLanguage]['volume']} ${Math.round(volume)}%`;
+            
+            // Check threshold and update status
+            const threshold = parseFloat(thresholdSlider.value);
+            if (volume > threshold) {
+                // Clear any pending idle timeout
+                if (idleTimeout !== null) {
+                    clearTimeout(idleTimeout);
+                    idleTimeout = null;
+                }
+                
+                // Immediately switch to speaking (no delay)
+                if (currentStatus !== 'speaking') {
+                    currentStatus = 'speaking';
+                    status.textContent = translations[currentLanguage]['speaking'];
+                    status.className = 'status speaking';
+                    // Show speaking image, hide idle image
+                    if (speakingImage.src) {
+                        speakingImage.style.display = 'block';
+                        idleImage.style.display = 'none';
+                        // Add bounce animation when transitioning from idle to speaking
+                        speakingImage.classList.remove('bounce');
+                        // Force reflow to restart animation
+                        void speakingImage.offsetWidth;
+                        speakingImage.classList.add('bounce');
+                    }
+                }
+            } else {
+                // Only apply delay when transitioning from speaking to idle
+                if (currentStatus === 'speaking' && idleTimeout === null) {
+                    // Set timeout to switch to idle after delay (only set once)
+                    const delay = parseInt(delayInput.value) || 500;
+                    idleTimeout = setTimeout(() => {
+                        currentStatus = 'none';
+                        status.textContent = translations[currentLanguage]['idle'];
+                        status.className = 'status none';
+                        // Show idle image, hide speaking image
+                        if (idleImage.src) {
+                            idleImage.style.display = 'block';
+                            speakingImage.style.display = 'none';
+                        }
+                        idleTimeout = null;
+                    }, delay);
+                }
+            }
+            
+            // Continue animation
+            requestAnimationFrame(visualize);
+        }
+
+        startBtn.addEventListener('click', startMicrophone);
+        
+        thresholdSlider.addEventListener('input', (e) => {
+            thresholdValue.textContent = `${translations[currentLanguage]['threshold']} ${e.target.value}%`;
+            saveSettings();
+        });
+
+        multiplierSlider.addEventListener('input', (e) => {
+            multiplierValue.textContent = `${parseFloat(e.target.value).toFixed(1)}x`;
+            saveSettings();
+        });
+
+        delayInput.addEventListener('input', (e) => {
+            delayValue.textContent = `${e.target.value}ms`;
+            saveSettings();
+        });
+
+        backgroundColorInput.addEventListener('input', (e) => {
+            const color = e.target.value;
+            // Validate hex color format
+            if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+                updateImageBackgroundColor(color);
+                backgroundColorValue.textContent = color.toUpperCase();
+                saveSettings();
+            } else {
+                backgroundColorValue.textContent = translations[currentLanguage]['invalidColor'];
+            }
+        });
+
+        // Color button quick selection
+        document.querySelectorAll('.color-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const color = e.target.getAttribute('data-color');
+                backgroundColorInput.value = color;
+                updateImageBackgroundColor(color);
+                backgroundColorValue.textContent = color.toUpperCase();
+                saveSettings();
+            });
+        });
+
+        function loadImage(file, imageElement) {
+            if (file && file.type === 'image/png') {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    imageElement.src = event.target.result;
+                    
+                    // Save image to current avatar set in IndexedDB
+                    if (imageElement === idleImage) {
+                        const idleKey = getAvatarSetKey(currentAvatarSet, 'idle');
+                        saveImageToIndexedDB(idleKey, imageElement.src).then(() => {
+                            saveAvatarSetImages(currentAvatarSet);
+                        }).catch(error => {
+                            console.error('Failed to save idle image:', error);
+                        });
+                    } else if (imageElement === speakingImage) {
+                        const speakingKey = getAvatarSetKey(currentAvatarSet, 'speaking');
+                        saveImageToIndexedDB(speakingKey, imageElement.src).then(() => {
+                            saveAvatarSetImages(currentAvatarSet);
+                        }).catch(error => {
+                            console.error('Failed to save speaking image:', error);
+                        });
+                    }
+                    
+                    // Ensure image respects max dimensions
+                    imageElement.onload = () => {
+                        resizeImage(imageElement, 512);
+
+                        // Show appropriate image based on current status
+                        const statusText = status.textContent;
+                        if (imageElement === idleImage && (statusText === 'idle' || statusText === 'none' || statusText === translations['en']['idle'] || statusText === translations['zh-TW']['idle'])) {
+                            imageElement.style.display = 'block';
+                            speakingImage.style.display = 'none';
+                        } else if (imageElement === speakingImage && (statusText === 'speaking' || statusText === translations['en']['speaking'] || statusText === translations['zh-TW']['speaking'])) {
+                            imageElement.style.display = 'block';
+                            idleImage.style.display = 'none';
+                        }
+                        
+                        // Update no-image message visibility
+                        updateNoImageMessage();
+                    };
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert(translations[currentLanguage]['selectPNG']);
+            }
+        }
+
+        idleImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            loadImage(file, idleImage);
+        });
+
+        speakingImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            loadImage(file, speakingImage);
+        });
+
+        // Remove bounce class after animation completes
+        speakingImage.addEventListener('animationend', () => {
+            speakingImage.classList.remove('bounce');
+        });
+
+        // Avatar switch button event listeners
+        document.querySelectorAll('.avatar-switch-btn').forEach(button => {
+            button.addEventListener('click', async (e) => {
+                const setIndex = parseInt(e.target.getAttribute('data-avatar-set'));
+                try {
+                    await switchAvatarSet(setIndex);
+                } catch (error) {
+                    console.error('Failed to switch avatar set:', error);
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>
