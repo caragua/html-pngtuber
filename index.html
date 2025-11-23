@@ -339,8 +339,8 @@
         <div class="container">
             <button id="startBtn" data-i18n="startMicrophone">Start Microphone</button>
             <div class="multiplier-control">
-                <label class="multiplier-label" for="multiplierSlider" data-i18n="volumeMultiplier">
-                    Volume Sensitivity Multiplier: &nbsp;
+                <label class="multiplier-label" for="multiplierSlider">
+                    <span data-i18n="volumeMultiplier">Volume Sensitivity Multiplier: &nbsp;</span>
                     <span class="multiplier-value" id="multiplierValue">1.0x</span>
                 </label>
                 <input type="range" id="multiplierSlider" min="0.1" max="10" value="1" step="0.1">
@@ -351,9 +351,11 @@
             <div class="volume-text" id="volumeText" data-i18n-prefix="volume">Volume: 0%</div>
             <div class="status none" id="status" data-i18n="idle">idle</div>
             <div class="threshold-control">
-                <label class="threshold-label" for="thresholdSlider" data-i18n="volumeThreshold">Volume Threshold:</label>
+                <label class="threshold-label" for="thresholdSlider">
+                    <span data-i18n="volumeThreshold">Volume Threshold: &nbsp;</span>
+                    <span class="threshold-value" id="thresholdValue">20%</span>
+                </label>
                 <input type="range" id="thresholdSlider" min="0" max="100" value="20">
-                <div class="threshold-value" id="thresholdValue" data-i18n-prefix="threshold">Threshold: 20%</div>
             </div>
             <div class="file-input-container">
                 <label for="idleImageInput" class="file-input-label" data-i18n="loadIdlePNG">Load Idle PNG</label>
@@ -362,8 +364,8 @@
                 <input type="file" id="speakingImageInput" accept="image/png">
             </div>
             <div class="delay-control">
-                <label class="delay-label" for="delayInput" data-i18n="idleDelay">
-                    Idle Delay (ms): &nbsp;
+                <label class="delay-label" for="delayInput">
+                    <span data-i18n="idleDelay">Idle Delay (ms): &nbsp;</span>
                     <span class="delay-value" id="delayValue">1000ms</span>
                 </label>
                 <input type="range" id="delayInput" min="0" max="5000" value="1000" step="100">
@@ -404,7 +406,7 @@
             </div>
         </div>
     </div>
-    <footer>HTML PNGTuber - @CaraguaWoof - 202511240200<br>github.com/caragua/html-pngtuber</footer>
+    <footer>HTML PNGTuber - @CaraguaWoof - 202511240300<br>github.com/caragua/html-pngtuber</footer>
 
     <script>
         let audioContext;
@@ -516,7 +518,6 @@
                 'idle': 'idle',
                 'speaking': 'speaking',
                 'volumeThreshold': 'Volume Threshold:',
-                'threshold': 'Threshold:',
                 'loadIdlePNG': 'Load Idle PNG',
                 'loadSpeakingPNG': 'Load Speaking PNG',
                 'idleDelay': 'Idle Delay (ms):',
@@ -539,7 +540,6 @@
                 'idle': '待機',
                 'speaking': '說話中',
                 'volumeThreshold': '音量閾值：',
-                'threshold': '閾值：',
                 'loadIdlePNG': '載入待機 PNG',
                 'loadSpeakingPNG': '載入說話 PNG',
                 'idleDelay': '待機延遲（毫秒）：',
@@ -611,14 +611,6 @@
                 const volumeMatch = volumeText.textContent.match(/(\d+)%/);
                 if (volumeMatch) {
                     volumeText.textContent = `${translations[lang]['volume']} ${volumeMatch[1]}%`;
-                }
-            }
-
-            // Update threshold value (keep the percentage)
-            if (thresholdValue) {
-                const thresholdMatch = thresholdValue.textContent.match(/(\d+)%/);
-                if (thresholdMatch) {
-                    thresholdValue.textContent = `${translations[lang]['threshold']} ${thresholdMatch[1]}%`;
                 }
             }
 
@@ -826,7 +818,7 @@
 
             if (savedThreshold !== null) {
                 thresholdSlider.value = savedThreshold;
-                thresholdValue.textContent = `${translations[currentLanguage]['threshold']} ${savedThreshold}%`;
+                thresholdValue.textContent = `${savedThreshold}%`;
             }
 
             if (savedMultiplier !== null) {
@@ -1024,7 +1016,7 @@
         startBtn.addEventListener('click', startMicrophone);
         
         thresholdSlider.addEventListener('input', (e) => {
-            thresholdValue.textContent = `${translations[currentLanguage]['threshold']} ${e.target.value}%`;
+            thresholdValue.textContent = `${e.target.value}%`;
             saveSettings();
         });
 
