@@ -20,3 +20,10 @@ Damn basic and (per my understanding) easy-to-use pngtuber program.
    Green screen, chroma key, ... etc. The color that should be filtered out and become transparent.
 8. Avatar sets
    Quickly switch up to 5 avatar sets.
+
+## Tested with:
+- OS: Windows 10
+- Browser: Firefox Developer Edition
+  * Normal browsers would do, but will stop updating the page if the window isn't visible. (aka, updates paused when not in foreground).
+  * Easiest way to make it still work is just install Firefox Developer Edition and run it. Works unless minimized manually.
+- Streaming Software: OBS
