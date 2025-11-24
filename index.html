@@ -409,6 +409,7 @@
             <div class="language-switcher">
                 <button class="lang-btn active" data-lang="en">English</button>
                 <button class="lang-btn" data-lang="zh-TW">繁體中文</button>
+                <button class="lang-btn" data-lang="ja">日本語</button>
             </div>
         </div>
         <div>
@@ -573,6 +574,28 @@
                 'selectPNG': '請選擇 PNG 檔案。',
                 'microphoneError': '無法存取麥克風。請允許麥克風存取權限。',
                 'invalidColor': '無效（請使用 #RRGGBB 格式）'
+            },
+            'ja': {
+                'startMicrophone': 'マイク開始',
+                'microphoneActive': 'マイク動作中',
+                'volumeMultiplier': '音量表示倍率：',
+                'volume': '音量：',
+                'idle': '待機',
+                'speaking': '話し中',
+                'volumeThreshold': '音量閾値：',
+                'loadIdlePNG': '待機 PNG を読み込む',
+                'loadSpeakingPNG': '話し中 PNG を読み込む',
+                'idleDelay': '待機時間（ミリ秒）：',
+                'backgroundColor': '背景色（16進数）：',
+                'noImageMessage': '画像が読み込まれていません。<br><br>「待機 PNG を読み込む」または「話し中 PNG を読み込む」ボタンをクリックして開始してください',
+                'avatar1': 'アバター 1',
+                'avatar2': 'アバター 2',
+                'avatar3': 'アバター 3',
+                'avatar4': 'アバター 4',
+                'avatar5': 'アバター 5',
+                'selectPNG': 'PNGファイルを選択してください。',
+                'microphoneError': 'マイクにアクセスできませんでした。マイクへのアクセスを許可してください。',
+                'invalidColor': '無効です（#RRGGBB 形式を使用してください）'
             }
         };
 
@@ -599,6 +622,11 @@
                 }
                 // For other zh variants, default to Traditional Chinese
                 return 'zh-TW';
+            }
+            
+            // Check if browser language is Japanese
+            if (browserLang.toLowerCase().startsWith('ja')) {
+                return 'ja';
             }
             
             // Default to English for all other languages
@@ -764,7 +792,7 @@
                 if (idleImage.complete) {
                     resizeImage(idleImage, 512);
                     const statusText = status.textContent;
-                    if (statusText === 'idle' || statusText === 'none' || statusText === translations['en']['idle'] || statusText === translations['zh-TW']['idle'] || !statusText) {
+                    if (statusText === 'idle' || statusText === 'none' || statusText === translations['en']['idle'] || statusText === translations['zh-TW']['idle'] || statusText === translations['ja']['idle'] || !statusText) {
                         idleImage.style.display = 'block';
                         speakingImage.style.display = 'none';
                     }
@@ -773,7 +801,7 @@
                     idleImage.onload = () => {
                         resizeImage(idleImage, 512);
                         const statusText = status.textContent;
-                        if (statusText === 'idle' || statusText === 'none' || statusText === translations['en']['idle'] || statusText === translations['zh-TW']['idle'] || !statusText) {
+                        if (statusText === 'idle' || statusText === 'none' || statusText === translations['en']['idle'] || statusText === translations['zh-TW']['idle'] || statusText === translations['ja']['idle'] || !statusText) {
                             idleImage.style.display = 'block';
                             speakingImage.style.display = 'none';
                         }
@@ -1107,10 +1135,10 @@
 
                         // Show appropriate image based on current status
                         const statusText = status.textContent;
-                        if (imageElement === idleImage && (statusText === 'idle' || statusText === 'none' || statusText === translations['en']['idle'] || statusText === translations['zh-TW']['idle'])) {
+                        if (imageElement === idleImage && (statusText === 'idle' || statusText === 'none' || statusText === translations['en']['idle'] || statusText === translations['zh-TW']['idle'] || statusText === translations['ja']['idle'])) {
                             imageElement.style.display = 'block';
                             speakingImage.style.display = 'none';
-                        } else if (imageElement === speakingImage && (statusText === 'speaking' || statusText === translations['en']['speaking'] || statusText === translations['zh-TW']['speaking'])) {
+                        } else if (imageElement === speakingImage && (statusText === 'speaking' || statusText === translations['en']['speaking'] || statusText === translations['zh-TW']['speaking'] || statusText === translations['ja']['speaking'])) {
                             imageElement.style.display = 'block';
                             idleImage.style.display = 'none';
                         }
