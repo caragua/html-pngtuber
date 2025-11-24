@@ -3,6 +3,8 @@ Yet another basic pngtuber
 
 Damn basic and (per my understanding) easy-to-use pngtuber program.
 
+This is a tool targeted for desktop use, so it won't be mobile-friendly.
+
 ## To use, just:
 1. Open the page
 2. "Start Microphone" (allow access to your microphone)
