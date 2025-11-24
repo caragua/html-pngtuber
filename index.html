@@ -52,6 +52,12 @@
             background: #666;
             cursor: not-allowed;
         }
+        .start-button-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
         #startBtn {
             margin-bottom: 0px;
         }
@@ -62,6 +68,7 @@
             border-radius: 5px;
             overflow: hidden;
             margin-top: 20px;
+            position: relative;
         }
         .volume-bar {
             height: 100%;
@@ -70,9 +77,16 @@
             transition: width 0.1s ease-out;
         }
         .volume-text {
-            margin-top: 15px;
-            font-size: 18px;
-            color: #aaa;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+            z-index: 1;
         }
         .threshold-control {
             margin-top: 25px;
@@ -195,7 +209,8 @@
             background-color: #FF00FF;
         }
         .status {
-            margin-top: 20px;
+            margin-top: 10px;
+            margin-bottom: 10px;
             font-size: 20px;
             font-weight: bold;
             border-radius: 5px;
@@ -305,7 +320,7 @@
         hr {
             margin: 25px 0;
             border: none;
-            border-top: 1px solid #555;
+            border-top: 2px dashed #555;
             width: 100%;
         }
         .language-switcher {
@@ -337,19 +352,11 @@
 <body>
     <div class="main-content">
         <div class="container">
-            <button id="startBtn" data-i18n="startMicrophone">Start Microphone</button>
-            <div class="multiplier-control">
-                <label class="multiplier-label" for="multiplierSlider">
-                    <span data-i18n="volumeMultiplier">Volume Sensitivity Multiplier: &nbsp;</span>
-                    <span class="multiplier-value" id="multiplierValue">1.0x</span>
-                </label>
-                <input type="range" id="multiplierSlider" min="0.1" max="10" value="1" step="0.1">
-            </div>
-            <div class="volume-container">
-                <div class="volume-bar" id="volumeBar"></div>
-            </div>
-            <div class="volume-text" id="volumeText" data-i18n-prefix="volume">Volume: 0%</div>
-            <div class="status none" id="status" data-i18n="idle">idle</div>
+            <div class="start-button-container">
+                <button id="startBtn" data-i18n="startMicrophone">Start Microphone</button>
+                <div class="status none" id="status" data-i18n="idle">idle</div>
+            </div>          
+            <hr>
             <div class="threshold-control">
                 <label class="threshold-label" for="thresholdSlider">
                     <span data-i18n="volumeThreshold">Volume Threshold: &nbsp;</span>
@@ -357,12 +364,25 @@
                 </label>
                 <input type="range" id="thresholdSlider" min="0" max="100" value="20">
             </div>
+            <div class="volume-container">
+                <div class="volume-bar" id="volumeBar"></div>
+                <div class="volume-text" id="volumeText" data-i18n-prefix="volume">Volume: 0%</div>
+            </div>  
+            <div class="multiplier-control">
+                <label class="multiplier-label" for="multiplierSlider">
+                    <span data-i18n="volumeMultiplier">Volume Sensitivity Multiplier: &nbsp;</span>
+                    <span class="multiplier-value" id="multiplierValue">1.0x</span>
+                </label>
+                <input type="range" id="multiplierSlider" min="0.1" max="10" value="1" step="0.1">
+            </div>
+            <hr>
             <div class="file-input-container">
                 <label for="idleImageInput" class="file-input-label" data-i18n="loadIdlePNG">Load Idle PNG</label>
                 <input type="file" id="idleImageInput" accept="image/png">
                 <label for="speakingImageInput" class="file-input-label" data-i18n="loadSpeakingPNG">Load Speaking PNG</label>
                 <input type="file" id="speakingImageInput" accept="image/png">
             </div>
+            <hr>
             <div class="delay-control">
                 <label class="delay-label" for="delayInput">
                     <span data-i18n="idleDelay">Idle Delay (ms): &nbsp;</span>
@@ -406,7 +426,7 @@
             </div>
         </div>
     </div>
-    <footer>HTML PNGTuber - @CaraguaWoof - 202511240300<br>github.com/caragua/html-pngtuber</footer>
+    <footer>HTML PNGTuber - @CaraguaWoof - 202511241300<br>github.com/caragua/html-pngtuber</footer>
 
     <script>
         let audioContext;
@@ -599,6 +619,11 @@
                     element.innerHTML = translations[lang][key];
                 }
             });
+
+            // Update start button text based on microphone state
+            if (startBtn && isRunning) {
+                startBtn.textContent = translations[lang]['microphoneActive'];
+            }
 
             // Update elements with data-i18n-prefix (for dynamic content)
             const volumeText = document.getElementById('volumeText');
