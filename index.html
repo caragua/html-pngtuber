@@ -28,7 +28,7 @@
         footer {
             text-align: center;
             padding: 20px;
-            color: #fff;
+            color: #666;
             min-width: 1100px;
         }
         .container {
@@ -61,6 +61,13 @@
         }
         #startBtn {
             margin-bottom: 0px;
+        }
+        .start-rtc-button-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 15px;
+            margin-bottom: 15px;
         }
         .volume-container {
             width: 100%;
@@ -191,6 +198,9 @@
             transform: scale(1.1);
             border-color: #888;
         }
+        .color-button.transparent {
+            background-color: transparent;
+        }
         .color-button.black {
             background-color: #000000;
         }
@@ -290,9 +300,6 @@
         .loaded-image.bounce {
             animation: bounceUp 0.4s ease-out;
         }
-        footer {
-            color: #666;
-        }
         .avatar-switches {
             display: flex;
             gap: 10px;
@@ -317,6 +324,22 @@
         .avatar-switch-btn.active {
             background: #4CAF50;
             border-color: #4CAF50;
+        }
+        #startRTCBtn {
+            background: #8b0000;
+            color: white;
+            border: 2px solid #8b0000;
+            transition: all 0.2s;
+            margin-bottom: 0px;
+        }
+        #startRTCBtn:hover {
+            background: #6b0000;
+            border-color: #6b0000;
+        }
+        #startRTCBtn:disabled {
+            background: #4b0000;
+            border-color: #4b0000;
+            cursor: not-allowed;
         }
         hr {
             margin: 25px 0;
@@ -356,7 +379,7 @@
             <div class="start-button-container">
                 <button id="startBtn" data-i18n="startMicrophone">Start Microphone</button>
                 <div class="status none" id="status" data-i18n="idle">idle</div>
-            </div>          
+            </div>
             <hr>
             <div class="threshold-control">
                 <label class="threshold-label" for="thresholdSlider">
@@ -396,8 +419,9 @@
                     Background Color (hex): &nbsp;
                     <span class="background-color-value" id="backgroundColorValue">#000000</span>
                 </label>
-                <input type="text" id="backgroundColorInput" class="background-color-input" value="#000000" pattern="^#[0-9A-Fa-f]{6}$" placeholder="#00FF00">
+                <input type="text" id="backgroundColorInput" class="background-color-input" value="transparent" pattern="^#[0-9A-Fa-f]{6}$" placeholder="#00FF00">
                 <div class="color-buttons">
+                    <button class="color-button transparent" data-color="transparent"></button>
                     <button class="color-button black" data-color="#000000"></button>
                     <button class="color-button white" data-color="#FFFFFF"></button>
                     <button class="color-button red" data-color="#FF0000"></button>
@@ -428,8 +452,22 @@
             </div>
         </div>
     </div>
-    <footer>HTML PNGTUBER - @CaraguaWoof - 202511250000<br>github.com/caragua/html-pngtuber</footer>
+    <hr>    
+    <div class="start-rtc-button-container">
+        <button id="startRTCBtn" data-i18n="startRTC">Start OBS Companion</button>
+    </div>
+    <div id="obsUrlDisplay" style="display: none; margin: 15px auto; max-width: 600px; padding: 15px; background: #333; border-radius: 5px; text-align: center;">
+        <p id="obsUrlAnnotation" style="margin: 10px 0 10px 0; font-size: 12px; color: #aaa; font-style: italic;" data-i18n="obsUrlAnnotation">(Add a browser source with this URL in OBS)</p>
+        <p id="obsUrlLabel" style="margin: 0 0 10px 0; font-weight: bold; color: #fff;" data-i18n="obsUrlLabel">Your OBS Companion URL is:</p>
+        <div style="display: flex; align-items: center; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            <a id="obsUrlLink" href="#" target="_blank" style="color: #4CAF50; word-break: break-all; text-decoration: none;">Loading...</a>
+            <button id="obsResetBtn" onclick="resetPeerId()" style="padding: 5px 10px; cursor: pointer; background: #8b0000; color: white; border: none; border-radius: 3px; margin-bottom: 0px;" data-i18n="resetPeerId">Reset Peer ID</button>
+            <button id="obsCopyBtn" onclick="copyOBSUrl()" style="padding: 5px 10px; cursor: pointer; background: #555; color: white; border: none; border-radius: 3px; margin-bottom: 0px;" data-i18n="copy">Copy</button>
+        </div>
+    </div>
+    <footer>HTML PNGTUBER - @CaraguaWoof - 202512051900<br>github.com/caragua/html-pngtuber</footer>
 
+    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
     <script>
         let audioContext;
         let analyser;
@@ -440,6 +478,143 @@
         let currentStatus = 'none';
         let currentAvatarSet = 0; // Current avatar set (0-4)
         let db = null; // IndexedDB database instance
+
+        // PeerJS variables
+        const obsCompanionURL = 'https://htmlpngtuber.collies.dev/obs.html';
+        const STORAGE_KEY = 'rtc_sender_peerid';
+        let peer = null;
+        let dataChannel = null;
+        let peerId = null;
+        let isRTCActive = false;
+        let obsButtonState = 'idle'; // 'idle', 'connecting', 'active', 'connected'
+
+        // PeerJS functions
+        function getStoredPeerId() {
+            return localStorage.getItem(STORAGE_KEY);
+        }
+
+        function storePeerId(peerId) {
+            localStorage.setItem(STORAGE_KEY, peerId);
+        }
+
+        function clearStoredPeerId() {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+
+        async function initWebRTC() {
+            if (isRTCActive) {
+                console.log('RTC already active');
+                return;
+            }
+
+            try {
+                isRTCActive = true;
+                obsButtonState = 'connecting';
+                const startRTCBtn = document.getElementById('startRTCBtn');
+                if (startRTCBtn) {
+                    startRTCBtn.textContent = translations[currentLanguage]['obsConnecting'];
+                    startRTCBtn.disabled = true;
+                }
+
+                // Check if we have a stored peer ID
+                const storedPeerId = getStoredPeerId();
+                
+                // Create PeerJS peer (using default public signaling server)
+                peer = new Peer(storedPeerId || undefined, {
+                    debug: 2
+                });
+
+                peer.on('open', (id) => {
+                    console.log('PeerJS peer opened with ID:', id);
+                    peerId = id;
+                    storePeerId(id);
+                    updateOBSUrlDisplay(id);
+                    
+                    obsButtonState = 'active';
+                    if (startRTCBtn) {
+                        startRTCBtn.textContent = translations[currentLanguage]['obsActive'];
+                    }
+                });
+
+                peer.on('connection', (conn) => {
+                    console.log('PeerJS connection received from:', conn.peer);
+                    dataChannel = conn;
+                    
+                    conn.on('open', () => {
+                        console.log('Data connection opened');
+                        obsButtonState = 'connected';
+                        const startRTCBtn = document.getElementById('startRTCBtn');
+                        if (startRTCBtn) {
+                            startRTCBtn.textContent = translations[currentLanguage]['obsConnected'];
+                            startRTCBtn.disabled = false;
+                        }
+                        
+                        // Send current avatar images to receiver
+                        sendAvatarData();
+                        // Send current language to receiver
+                        sendLanguage();
+                    });
+
+
+                    conn.on('error', (error) => {
+                        console.error('Connection error:', error);
+                    });
+
+                    conn.on('close', () => {
+                        console.log('Connection closed');
+                        dataChannel = null;
+                        obsButtonState = 'active';
+                        const startRTCBtn = document.getElementById('startRTCBtn');
+                        if (startRTCBtn) {
+                            startRTCBtn.textContent = translations[currentLanguage]['obsActive'];
+                        }
+                    });
+                });
+
+                peer.on('error', (error) => {
+                    console.error('PeerJS error:', error);
+                    if (error.type === 'peer-unavailable') {
+                        // Peer ID might be taken, try creating a new one
+                        console.log('Peer ID unavailable, creating new peer...');
+                        clearStoredPeerId();
+                        if (peer && !peer.destroyed) {
+                            peer.destroy();
+                        }
+                        setTimeout(() => {
+                            initWebRTC();
+                        }, 1000);
+                    } else {
+                        // Other errors - reset state
+                        isRTCActive = false;
+                        obsButtonState = 'idle';
+                        const startRTCBtn = document.getElementById('startRTCBtn');
+                        if (startRTCBtn) {
+                            startRTCBtn.textContent = translations[currentLanguage]['startRTC'];
+                            startRTCBtn.disabled = false;
+                        }
+                        const obsUrlDisplay = document.getElementById('obsUrlDisplay');
+                        if (obsUrlDisplay) {
+                            obsUrlDisplay.style.display = 'none';
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error('PeerJS initialization error:', error);
+                clearStoredPeerId();
+                isRTCActive = false;
+                obsButtonState = 'idle';
+                const startRTCBtn = document.getElementById('startRTCBtn');
+                if (startRTCBtn) {
+                    startRTCBtn.textContent = translations[currentLanguage]['startRTC'];
+                    startRTCBtn.disabled = false;
+                }
+                const obsUrlDisplay = document.getElementById('obsUrlDisplay');
+                if (obsUrlDisplay) {
+                    obsUrlDisplay.style.display = 'none';
+                }
+            }
+        }
 
         // Initialize IndexedDB for image storage
         function initIndexedDB() {
@@ -552,7 +727,15 @@
                 'avatar5': 'Avatar 5',
                 'selectPNG': 'Please select a PNG file.',
                 'microphoneError': 'Failed to access microphone. Please allow microphone access.',
-                'invalidColor': 'Invalid (use #RRGGBB format)'
+                'invalidColor': 'Invalid (use #RRGGBB format)',
+                'startRTC': 'Start OBS Companion',
+                'obsConnecting': 'OBS Companion Connecting...',
+                'obsActive': 'OBS Companion Active',
+                'obsConnected': 'Connected',
+                'obsUrlLabel': 'Your OBS Companion URL is:',
+                'obsUrlAnnotation': '(Add a browser source with this URL in OBS)',
+                'copy': 'Copy URL',
+                'resetPeerId': 'Reset Peer ID'
             },
             'zh-TW': {
                 'startMicrophone': '啟動麥克風',
@@ -574,11 +757,19 @@
                 'avatar5': '頭像 5',
                 'selectPNG': '請選擇 PNG 檔案。',
                 'microphoneError': '無法存取麥克風。請允許麥克風存取權限。',
-                'invalidColor': '無效（請使用 #RRGGBB 格式）'
+                'invalidColor': '無效（請使用 #RRGGBB 格式）',
+                'startRTC': '啟動 OBS 畫面',
+                'obsConnecting': 'OBS 畫面連線中...',
+                'obsActive': 'OBS 畫面已啟動',
+                'obsConnected': '已連線',
+                'obsUrlLabel': '您的 OBS 畫面網址：',
+                'obsUrlAnnotation': '（在 OBS 中使用此網址新增瀏覽器來源）',
+                'copy': '複製網址',
+                'resetPeerId': '重置連線 ID'
             },
             'ja': {
-                'startMicrophone': 'マイク開始',
-                'microphoneActive': 'マイク動作中',
+                'startMicrophone': 'マイクを開始',
+                'microphoneActive': 'マイク使用中',
                 'volumeMultiplier': '音量表示倍率：',
                 'volume': '音量：',
                 'idle': '待機',
@@ -596,7 +787,15 @@
                 'avatar5': 'アバター 5',
                 'selectPNG': 'PNGファイルを選択してください。',
                 'microphoneError': 'マイクにアクセスできませんでした。マイクへのアクセスを許可してください。',
-                'invalidColor': '無効です（#RRGGBB 形式を使用してください）'
+                'invalidColor': '無効です（#RRGGBB 形式を使用してください）',
+                'startRTC': 'OBS Companion を開始',
+                'obsConnecting': 'OBS Companion 接続中...',
+                'obsActive': 'OBS Companion がアクティブ',
+                'obsConnected': '接続済み',
+                'obsUrlLabel': 'OBS Companion URL：',
+                'obsUrlAnnotation': '（OBSでこのURLを使用してブラウザソースを追加）',
+                'copy': 'URLをコピー',
+                'resetPeerId': 'ピアIDをリセット'
             }
         };
 
@@ -654,6 +853,29 @@
                 startBtn.textContent = translations[lang]['microphoneActive'];
             }
 
+            // Update OBS button text based on current state
+            const startRTCBtn = document.getElementById('startRTCBtn');
+            if (startRTCBtn) {
+                // Use the state variable to determine which translation to use
+                switch (obsButtonState) {
+                    case 'connecting':
+                        startRTCBtn.textContent = translations[lang]['obsConnecting'];
+                        break;
+                    case 'active':
+                        startRTCBtn.textContent = translations[lang]['obsActive'];
+                        break;
+                    case 'connected':
+                        startRTCBtn.textContent = translations[lang]['obsConnected'];
+                        break;
+                    case 'idle':
+                    default:
+                        if (!startRTCBtn.disabled) {
+                            startRTCBtn.textContent = translations[lang]['startRTC'];
+                        }
+                        break;
+                }
+            }
+
             // Update elements with data-i18n-prefix (for dynamic content)
             const volumeText = document.getElementById('volumeText');
             const thresholdValue = document.getElementById('thresholdValue');
@@ -687,6 +909,9 @@
                     status.className = 'status speaking';
                 }
             }
+
+            // Send language to receiver if connected
+            sendLanguage();
         }
 
         // Language switcher event listeners
@@ -854,6 +1079,9 @@
             
             // Load new avatar set
             await loadAvatarSetImages(setIndex);
+            
+            // Send updated avatar data to receiver if connected
+            sendAvatarData();
         }
 
         // Load settings from localStorage
@@ -891,12 +1119,12 @@
                     updateImageBackgroundColor(savedBackgroundColor);
                     backgroundColorValue.textContent = `${savedBackgroundColor.toUpperCase()}`;
                 } else {
-                    updateImageBackgroundColor('#000000');
-                    backgroundColorValue.textContent = `#000000`;
+                    updateImageBackgroundColor('transparent');
+                    backgroundColorValue.textContent = `transparent`;
                 }
             } else {
                 // Initialize background color to black if no saved value
-                updateImageBackgroundColor('#000000');
+                updateImageBackgroundColor('transparent');
             }
 
 
@@ -921,50 +1149,168 @@
             localStorage.setItem('pngtuber_backgroundColor', backgroundColorInput.value);
         }
 
-
-        // Safe localStorage setter with quota error handling
-        function safeLocalStorageSet(key, value) {
-            try {
-                localStorage.setItem(key, value);
-                return true;
-            } catch (e) {
-                if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-                    console.warn('localStorage quota exceeded. Attempting to free space...');
-                    // Try to clear old avatar sets to free space
-                    try {
-                        // Clear avatar sets 4, 3, 2, 1 in that order (keep set 0)
-                        for (let i = 4; i >= 1; i--) {
-                            localStorage.removeItem(getAvatarSetKey(i, 'idle'));
-                            localStorage.removeItem(getAvatarSetKey(i, 'speaking'));
-                        }
-                        // Try again
-                        localStorage.setItem(key, value);
-                        alert('Storage space was low. Cleared some avatar sets to free space.');
-                        return true;
-                    } catch (e2) {
-                        alert('Storage quota exceeded. Please clear some avatar sets or browser data.');
-                        console.error('Failed to save to localStorage:', e2);
-                        return false;
-                    }
-                } else {
-                    console.error('Error saving to localStorage:', e);
-                    return false;
-                }
-            }
-        }
-
-        // Save image to localStorage
-        function saveImage(imageElement, storageKey) {
-            if (imageElement.src && imageElement.src.startsWith('data:')) {
-                return safeLocalStorageSet(storageKey, imageElement.src);
-            }
-            return false;
-        }
-
         // Load settings on page load
         loadSettings().catch(error => {
             console.error('Failed to load settings:', error);
         });
+
+        // Function to send large data in chunks
+        function sendLargeData(data, messageType = 'data') {
+            if (!dataChannel || !dataChannel.open) {
+                return;
+            }
+
+            try {
+                // PeerJS data connections have a default max message size of ~64KB
+                const maxMessageSize = 65536;
+                const dataString = JSON.stringify(data);
+                const dataSize = new Blob([dataString]).size;
+                
+                // If data fits in one message, send it directly
+                if (dataSize <= maxMessageSize) {
+                    dataChannel.send(dataString);
+                    console.log(`${messageType} sent (${dataSize} bytes)`);
+                    return;
+                }
+
+                // Split into chunks
+                const chunkSize = maxMessageSize - 1000; // Reserve space for metadata
+                const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+                const totalChunks = Math.ceil(dataString.length / chunkSize);
+
+                console.log(`Sending ${messageType} in ${totalChunks} chunks (${dataSize} bytes, max: ${maxMessageSize} bytes)`);
+
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * chunkSize;
+                    const end = Math.min(start + chunkSize, dataString.length);
+                    const chunk = dataString.substring(start, end);
+                    
+                    const chunkData = {
+                        type: 'chunk',
+                        messageType: messageType,
+                        messageId: messageId,
+                        chunkIndex: i,
+                        totalChunks: totalChunks,
+                        data: chunk
+                    };
+                    
+                    dataChannel.send(JSON.stringify(chunkData));
+                }
+            } catch (error) {
+                console.error(`Error sending ${messageType}:`, error);
+            }
+        }
+
+        // Function to send avatar data to receiver
+        function sendAvatarData() {
+            if (!dataChannel || !dataChannel.open) {
+                return;
+            }
+
+            const avatarData = {
+                type: 'avatar',
+                idleImage: idleImage.src && idleImage.src.startsWith('data:') ? idleImage.src : null,
+                speakingImage: speakingImage.src && speakingImage.src.startsWith('data:') ? speakingImage.src : null,
+                avatarSet: currentAvatarSet
+            };
+            
+            sendLargeData(avatarData, 'avatar');
+        }
+
+        // Function to send language preference to receiver
+        function sendLanguage() {
+            if (!dataChannel || !dataChannel.open) {
+                return;
+            }
+
+            try {
+                const languageData = {
+                    type: 'language',
+                    language: currentLanguage
+                };
+                dataChannel.send(JSON.stringify(languageData));
+            } catch (error) {
+                console.error('Error sending language:', error);
+            }
+        }
+
+        // Function to update OBS URL display
+        function updateOBSUrlDisplay(peerId) {
+            if (!peerId) return;
+            
+            const obsUrl = `${obsCompanionURL}?peerid=${peerId}`;
+            const obsUrlDisplay = document.getElementById('obsUrlDisplay');
+            const obsUrlLink = document.getElementById('obsUrlLink');
+            
+            if (obsUrlDisplay && obsUrlLink) {
+                obsUrlLink.href = obsUrl;
+                obsUrlLink.textContent = obsUrl;
+                obsUrlDisplay.style.display = 'block';
+            }
+        }
+
+        // Function to copy OBS URL to clipboard
+        function copyOBSUrl() {
+            const obsUrlLink = document.getElementById('obsUrlLink');
+            if (obsUrlLink && obsUrlLink.href !== '#') {
+                navigator.clipboard.writeText(obsUrlLink.href).then(() => {
+                    alert('OBS Companion URL copied to clipboard!');
+                }).catch(err => {
+                    console.error('Failed to copy URL:', err);
+                });
+            }
+        }
+
+        // Function to reset peer ID
+        async function resetPeerId() {
+            if (!confirm('Are you sure you want to reset the Peer ID? This will disconnect any current connections and generate a new ID.')) {
+                return;
+            }
+
+            try {
+                // Close existing data channel
+                if (dataChannel && dataChannel.open) {
+                    dataChannel.close();
+                }
+                dataChannel = null;
+
+                // Destroy existing peer
+                if (peer && !peer.destroyed) {
+                    peer.destroy();
+                }
+                peer = null;
+
+                // Clear stored peer ID
+                clearStoredPeerId();
+                peerId = null;
+
+                // Reset state
+                isRTCActive = false;
+                obsButtonState = 'idle';
+
+                // Update UI
+                const startRTCBtn = document.getElementById('startRTCBtn');
+                if (startRTCBtn) {
+                    startRTCBtn.textContent = translations[currentLanguage]['startRTC'];
+                    startRTCBtn.disabled = false;
+                }
+
+                const obsUrlDisplay = document.getElementById('obsUrlDisplay');
+                if (obsUrlDisplay) {
+                    obsUrlDisplay.style.display = 'none';
+                }
+
+                console.log('Peer ID reset. Click "Start OBS Companion" to generate a new Peer ID.');
+            } catch (error) {
+                console.error('Error resetting peer ID:', error);
+            }
+        }
+
+        // RTC button event listener
+        const startRTCBtn = document.getElementById('startRTCBtn');
+        if (startRTCBtn) {
+            startRTCBtn.addEventListener('click', initWebRTC);
+        }
 
         async function startMicrophone() {
             try {
@@ -1018,6 +1364,19 @@
             // Update visual bar
             volumeBar.style.width = volume + '%';
             volumeText.textContent = `${translations[currentLanguage]['volume']} ${Math.round(volume)}%`;
+            
+            // Send status data over PeerJS data connection if connected
+            if (dataChannel && dataChannel.open) {
+                try {
+                    const statusData = {
+                        status: currentStatus,
+                        timestamp: Date.now()
+                    };
+                    dataChannel.send(JSON.stringify(statusData));
+                } catch (error) {
+                    console.error('Error sending data:', error);
+                }
+            }
             
             // Check threshold and update status
             const threshold = parseFloat(thresholdSlider.value);
@@ -1146,6 +1505,9 @@
                         
                         // Update no-image message visibility
                         updateNoImageMessage();
+                        
+                        // Send updated avatar data to receiver if connected
+                        sendAvatarData();
                     };
                 };
                 reader.readAsDataURL(file);
