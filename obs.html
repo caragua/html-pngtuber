@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML PNGTUBER</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #222222;
+            color: #fff;
+        }
+        .main-content {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            gap: 40px;
+            padding: 20px;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #fff;
+            min-width: 1100px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 30px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .image-container {
+            width: 512px;
+            height: 512px;
+            background-color: transparent;
+            border: 64px solid transparent;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .no-image-message {
+            position: absolute;
+            color: #ccc;
+            font-size: 16px;
+            font-weight: 500;
+            padding: 30px 40px;
+            line-height: 1.6;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            max-width: 400px;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .loaded-image {
+            max-width: 512px;
+            max-height: 512px;
+            width: auto;
+            height: auto;
+        }
+        @keyframes bounceUp {
+            0% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-32px);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
+        .loaded-image.bounce {
+            animation: bounceUp 0.4s ease-out;
+        }
+        footer {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div>
+            <div id="imageContainer" class="image-container">
+                <div id="noImageMessage" class="no-image-message" data-i18n="noImageMessage">Waiting for avatar images from sender...</div>
+                <div id="disconnectedMessage" class="no-image-message" style="display: none;" data-i18n="disconnectedMessage">Disconnected</div>
+                <img id="idleImage" class="loaded-image" style="display: none;" alt="Idle image">
+                <img id="speakingImage" class="loaded-image" style="display: none;" alt="Speaking image">     
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+    <script>
+        let isRunning = false;
+        let currentStatus = 'none';
+
+        // PeerJS variables
+        const MAX_RETRY_COUNT = 24; // 2 minutes (5 seconds interval)
+        let peer = null;
+        let dataChannel = null;
+        let senderPeerId = null;
+        let retryCount = 0;
+        let isReconnecting = false;
+        let rtcStatus = 'none';
+        
+        // Chunk reassembly buffers
+        const chunkBuffers = new Map();
+
+        // Function to process avatar data
+        function processAvatarData(avatarData) {
+            if (avatarData.idleImage) {
+                idleImage.src = avatarData.idleImage;
+                idleImage.onload = () => {
+                    resizeImage(idleImage, 512);
+                    updateNoImageMessage();
+                    // Show idle image if current status is idle
+                    if (currentStatus === 'none' || currentStatus === 'idle') {
+                        idleImage.style.display = 'block';
+                        speakingImage.style.display = 'none';
+                    }
+                };
+            }
+            if (avatarData.speakingImage) {
+                speakingImage.src = avatarData.speakingImage;
+                speakingImage.onload = () => {
+                    resizeImage(speakingImage, 512);
+                    updateNoImageMessage();
+                    // Show speaking image if current status is speaking
+                    if (currentStatus === 'speaking') {
+                        speakingImage.style.display = 'block';
+                        idleImage.style.display = 'none';
+                    }
+                };
+            }
+            console.log('Avatar data received and applied');
+        }
+
+        function handleDisconnection() {
+            if (isReconnecting) {
+                return; // Already handling a disconnection
+            }
+            
+            if (retryCount >= MAX_RETRY_COUNT) {
+                showDisconnected(); // Show "Disconnected" when limit reached
+                console.log(`Max retry count (${MAX_RETRY_COUNT}) reached. Stopping reconnection attempts.`);
+                return;
+            }
+
+            retryCount++;
+            isReconnecting = true;
+            showConnecting(); // Show "Connecting" with retry count
+            console.log(`Disconnection detected. Attempting reconnect (${retryCount}/${MAX_RETRY_COUNT})...`);
+            
+            if (peer && !peer.destroyed) {
+                try {
+                    peer.destroy();
+                } catch (e) {
+                    console.error('Error destroying peer:', e);
+                }
+            }
+
+            setTimeout(() => {
+                reconnect();
+            }, 5000);
+        }
+
+        async function reconnect() {
+            try {
+                if (!senderPeerId) {
+                    console.error('No sender peer ID available for reconnection');
+                    isReconnecting = false;
+                    return;
+                }
+
+                isReconnecting = true;
+                await connect();
+                // Note: isReconnecting will be set to false when connection opens successfully
+                // or when handleDisconnection is called again
+            } catch (error) {
+                console.error('Reconnection error:', error);
+                isReconnecting = false;
+                
+                if (retryCount < MAX_RETRY_COUNT) {
+                    setTimeout(() => {
+                        handleDisconnection();
+                    }, 5000);
+                } else {
+                    console.log(`Reconnection failed after ${MAX_RETRY_COUNT} attempts`);
+                    showDisconnected(); // Show disconnected when limit reached
+                    isReconnecting = false;
+                }
+            }
+        }
+
+        function setupConnection(conn) {
+            conn.on('open', () => {
+                console.log('Data connection opened to sender');
+                dataChannel = conn;
+                isRunning = true;
+                retryCount = 0;
+                isReconnecting = false;
+                hideDisconnected(); // Hide disconnected message
+                updateNoImageMessage(); // Update message visibility
+                visualize(); // Start visualization
+            });
+
+            conn.on('data', (data) => {
+                try {
+                    const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+                    
+                    // Handle chunked data
+                    if (parsedData.type === 'chunk') {
+                        const messageId = parsedData.messageId;
+                        
+                        // Initialize buffer if needed
+                        if (!chunkBuffers.has(messageId)) {
+                            chunkBuffers.set(messageId, {
+                                chunks: new Array(parsedData.totalChunks),
+                                receivedCount: 0,
+                                messageType: parsedData.messageType
+                            });
+                        }
+                        
+                        const buffer = chunkBuffers.get(messageId);
+                        buffer.chunks[parsedData.chunkIndex] = parsedData.data;
+                        buffer.receivedCount++;
+                        
+                        // If all chunks received, reassemble
+                        if (buffer.receivedCount === parsedData.totalChunks) {
+                            const reassembledData = JSON.parse(buffer.chunks.join(''));
+                            chunkBuffers.delete(messageId);
+                            
+                            // Process the reassembled data
+                            if (buffer.messageType === 'avatar') {
+                                processAvatarData(reassembledData);
+                            }
+                        }
+                        return;
+                    }
+                    
+                    // Handle non-chunked avatar data
+                    if (parsedData.type === 'avatar') {
+                        processAvatarData(parsedData);
+                        return;
+                    }
+                    
+                    // Handle status data
+                    if (parsedData.status !== undefined) {
+                        rtcStatus = parsedData.status;
+                        return;
+                    }
+                    
+                    // Handle language data
+                    if (parsedData.type === 'language' && parsedData.language) {
+                        updateLanguage(parsedData.language);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error parsing data:', error);
+                }
+            });
+
+            conn.on('error', (error) => {
+                console.error('Connection error:', error);
+                dataChannel = null;
+                isRunning = false;
+                // Always try to reconnect on connection error, unless we've exceeded max retries
+                if (retryCount < MAX_RETRY_COUNT) {
+                    if (!isReconnecting) {
+                        showConnecting(); // Show connecting state
+                        handleDisconnection();
+                    }
+                } else {
+                    showDisconnected(); // Show disconnected when limit reached
+                }
+            });
+
+            conn.on('close', () => {
+                console.log('Connection closed');
+                dataChannel = null;
+                isRunning = false;
+                // Always try to reconnect on close, unless we've exceeded max retries
+                if (retryCount < MAX_RETRY_COUNT) {
+                    if (!isReconnecting) {
+                        showConnecting(); // Show connecting state
+                        handleDisconnection();
+                    }
+                } else {
+                    showDisconnected(); // Show disconnected when limit reached
+                }
+            });
+        }
+
+        async function connect() {
+            try {
+                if (!senderPeerId) {
+                    throw new Error('No sender peer ID available');
+                }
+
+                // Reset reconnecting flag at the start of connection attempt
+                // This allows retries even if previous attempts set the flag
+                isReconnecting = false;
+
+                // Destroy existing peer if it exists
+                if (peer && !peer.destroyed) {
+                    try {
+                        peer.destroy();
+                    } catch (e) {
+                        console.error('Error destroying existing peer:', e);
+                    }
+                }
+
+                // Create PeerJS peer (using default public signaling server)
+                peer = new Peer(undefined, {
+                    debug: 2
+                });
+
+                peer.on('open', (id) => {
+                    console.log('PeerJS peer opened with ID:', id);
+                    
+                    // Connect to sender
+                    const conn = peer.connect(senderPeerId, {
+                        reliable: true
+                    });
+
+                    setupConnection(conn);
+                    
+                    // Also set up error handler for the connection
+                    conn.on('error', (error) => {
+                        console.error('Connection failed:', error);
+                        // If connection fails immediately (e.g., "Could not connect to peer"), trigger reconnection
+                        if (!conn.open && retryCount < MAX_RETRY_COUNT) {
+                            showConnecting(); // Show connecting state
+                            setTimeout(() => {
+                                handleDisconnection();
+                            }, 1000);
+                        } else if (retryCount >= MAX_RETRY_COUNT) {
+                            showDisconnected(); // Show disconnected when limit reached
+                        }
+                    });
+                });
+
+                // Handle case where peer is already open
+                if (peer.open) {
+                    console.log('PeerJS peer already open, connecting immediately');
+                    const conn = peer.connect(senderPeerId, {
+                        reliable: true
+                    });
+                    setupConnection(conn);
+                    
+                    // Set up error handler for immediate connection attempt
+                    conn.on('error', (error) => {
+                        console.error('Connection failed:', error);
+                        if (!conn.open && retryCount < MAX_RETRY_COUNT) {
+                            showConnecting(); // Show connecting state
+                            setTimeout(() => {
+                                handleDisconnection();
+                            }, 1000);
+                        } else if (retryCount >= MAX_RETRY_COUNT) {
+                            showDisconnected(); // Show disconnected when limit reached
+                        }
+                    });
+                }
+
+                peer.on('error', (error) => {
+                    console.error('PeerJS peer error:', error);
+                    // Always try to reconnect on peer errors if we haven't exceeded retries
+                    if (retryCount < MAX_RETRY_COUNT) {
+                        showConnecting(); // Show connecting state
+                        setTimeout(() => {
+                            handleDisconnection();
+                        }, 1000);
+                    } else {
+                        showDisconnected(); // Show disconnected when limit reached
+                    }
+                });
+
+            } catch (error) {
+                console.error('Connection error:', error);
+                isReconnecting = false;
+                
+                if (retryCount < MAX_RETRY_COUNT) {
+                    showConnecting(); // Show connecting state
+                    setTimeout(() => {
+                        handleDisconnection();
+                    }, 5000);
+                } else {
+                    showDisconnected(); // Show disconnected when limit reached
+                }
+            }
+        }
+
+        async function initWebRTC() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                senderPeerId = urlParams.get('peerid') || urlParams.get('uuid'); // Support both for backward compatibility
+
+                if (!senderPeerId) {
+                    console.log('No peer ID found in URL. RTC mode disabled.');
+                    showDisconnected(); // Show disconnected when no peer ID
+                    return;
+                }
+
+                // Show loading state while connecting
+                showLoading();
+                await connect();
+            } catch (error) {
+                console.error('PeerJS initialization error:', error);
+                if (retryCount >= MAX_RETRY_COUNT) {
+                    showDisconnected(); // Show disconnected when limit reached
+                } else {
+                    showConnecting(); // Show connecting state
+                }
+            }
+        }
+
+        const idleImage = document.getElementById('idleImage');
+        const speakingImage = document.getElementById('speakingImage');
+        const noImageMessage = document.getElementById('noImageMessage');
+        const disconnectedMessage = document.getElementById('disconnectedMessage');
+
+        // Translation system
+        const translations = {
+            'en': {
+                'noImageMessage': 'Waiting for avatar images from sender...',
+                'disconnectedMessage': 'Disconnected',
+                'connectingMessage': 'Connecting',
+                'loadingMessage': 'Loading...'
+            },
+            'zh-TW': {
+                'noImageMessage': '等待發送者傳送頭像圖片...',
+                'disconnectedMessage': '已斷線',
+                'connectingMessage': '連線中',
+                'loadingMessage': '載入中...'
+            },
+            'ja': {
+                'noImageMessage': '送信者からのアバター画像を待機中...',
+                'disconnectedMessage': '切断されました',
+                'connectingMessage': '接続中',
+                'loadingMessage': '読み込み中...'
+            }
+        };
+
+        // Language will be set by sender, default to English until received
+        let currentLanguage = 'en';
+
+        // Function to update all text elements based on current language
+        function updateLanguage(lang) {
+            // Only update if language is valid
+            if (!translations[lang]) {
+                console.warn(`Invalid language: ${lang}, defaulting to 'en'`);
+                lang = 'en';
+            }
+            
+            currentLanguage = lang;
+            // Don't save to localStorage - language comes from sender
+            
+            // Update all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (translations[lang] && translations[lang][key]) {
+                    element.innerHTML = translations[lang][key];
+                }
+            });
+            
+            // Update disconnected/connecting/loading message if visible
+            if (disconnectedMessage.style.display === 'block') {
+                if (retryCount >= MAX_RETRY_COUNT) {
+                    showDisconnected();
+                } else if (retryCount > 0) {
+                    showConnecting();
+                } else {
+                    // If retryCount is 0, show loading (initial state)
+                    showLoading();
+                }
+            }
+        }
+
+        // Initialize language on page load (will be updated when sender sends language)
+        updateLanguage(currentLanguage);
+
+        // Function to show loading state (initial state)
+        function showLoading() {
+            idleImage.style.display = 'none';
+            speakingImage.style.display = 'none';
+            noImageMessage.style.display = 'none';
+            disconnectedMessage.style.display = 'block';
+            
+            // Update message to show loading
+            const loadingText = translations[currentLanguage]['loadingMessage'] || 'Loading...';
+            disconnectedMessage.textContent = loadingText;
+        }
+
+        // Function to show connecting state (with retry count)
+        function showConnecting() {
+            idleImage.style.display = 'none';
+            speakingImage.style.display = 'none';
+            noImageMessage.style.display = 'none';
+            disconnectedMessage.style.display = 'block';
+            
+            // Update message with retry count
+            const connectingText = translations[currentLanguage]['connectingMessage'] || 'Connecting';
+            disconnectedMessage.textContent = `${connectingText}... (${retryCount}/${MAX_RETRY_COUNT})`;
+        }
+
+        // Function to show disconnected state (when retry limit reached)
+        function showDisconnected() {
+            idleImage.style.display = 'none';
+            speakingImage.style.display = 'none';
+            noImageMessage.style.display = 'none';
+            disconnectedMessage.style.display = 'block';
+            
+            // Update message to show disconnected
+            const disconnectedText = translations[currentLanguage]['disconnectedMessage'] || 'Disconnected';
+            disconnectedMessage.textContent = disconnectedText;
+        }
+
+        // Function to hide disconnected/connecting state
+        function hideDisconnected() {
+            disconnectedMessage.style.display = 'none';
+        }
+
+        // Update no-image message visibility
+        function updateNoImageMessage() {
+            // Don't update if disconnected
+            if (disconnectedMessage.style.display === 'block') {
+                return;
+            }
+
+            const isValidImageSrc = (src) => {
+                if (!src || src.length === 0) return false;
+                // Check if it's a valid image source (data URL, blob URL, or http/https URL)
+                // Also exclude the current page URL which can appear when src is cleared
+                const currentPageUrl = window.location.href;
+                if (src === currentPageUrl || src === window.location.origin + '/' || src === window.location.origin) {
+                    return false;
+                }
+                return src.startsWith('data:') || src.startsWith('blob:') || src.startsWith('http://') || src.startsWith('https://');
+            };
+            
+            const hasIdleImage = isValidImageSrc(idleImage.src);
+            const hasSpeakingImage = isValidImageSrc(speakingImage.src);
+            
+            if (!hasIdleImage && !hasSpeakingImage) {
+                noImageMessage.style.display = 'block';
+            } else {
+                noImageMessage.style.display = 'none';
+            }
+        }
+
+        // Helper function to resize image to fit max dimensions
+        function resizeImage(img, maxSize) {
+            const width = img.naturalWidth;
+            const height = img.naturalHeight;
+
+            if (width > maxSize || height > maxSize) {
+                const ratio = Math.min(maxSize / width, maxSize / height);
+                img.style.width = (width * ratio) + 'px';
+                img.style.height = (height * ratio) + 'px';
+            } else {
+                img.style.width = width + 'px';
+                img.style.height = height + 'px';
+            }
+        }
+
+
+        // Show loading state immediately on page load
+        showLoading();
+
+        // Initialize WebRTC on page load (automatically starts RTC connection)
+        initWebRTC();
+
+        // Start visualization loop immediately (will use RTC data when available)
+        visualize();
+
+        function visualize() {
+            // Determine if PeerJS data is available and connected
+            const isRTCConnected = isRunning && dataChannel && dataChannel.open;
+
+            if (!isRTCConnected) {
+                // If not connected, show appropriate message based on retry status
+                if (disconnectedMessage.style.display !== 'block') {
+                    if (retryCount >= MAX_RETRY_COUNT) {
+                        showDisconnected(); // Show disconnected when limit reached
+                    } else if (retryCount > 0) {
+                        showConnecting(); // Show connecting with retry count
+                    } else {
+                        showLoading(); // Show loading for initial state
+                    }
+                } else if (retryCount < MAX_RETRY_COUNT && retryCount > 0) {
+                    // Update connecting message with current retry count
+                    showConnecting();
+                } else if (retryCount === 0) {
+                    // Update loading message if still in initial state
+                    showLoading();
+                }
+            } else if (isRTCConnected && rtcStatus) {
+                // Use RTC status directly, no delay
+                if (rtcStatus === 'speaking' && currentStatus !== 'speaking') {
+                    currentStatus = 'speaking';
+                    // Show speaking image, hide idle image
+                    if (speakingImage.src) {
+                        speakingImage.style.display = 'block';
+                        idleImage.style.display = 'none';
+                        // Add bounce animation when transitioning from idle to speaking
+                        speakingImage.classList.remove('bounce');
+                        // Force reflow to restart animation
+                        void speakingImage.offsetWidth;
+                        speakingImage.classList.add('bounce');
+                    }
+                } else if ((rtcStatus === 'idle' || rtcStatus === 'none') && currentStatus !== 'none' && currentStatus !== 'idle') {
+                    // If RTC connected and sender is not speaking, immediately switch to idle
+                    currentStatus = 'none';
+                    if (idleImage.src) {
+                        idleImage.style.display = 'block';
+                        speakingImage.style.display = 'none';
+                    }
+                }
+            }
+            
+            // Continue animation
+            requestAnimationFrame(visualize);
+        }
+
+        // Remove bounce class after animation completes
+        speakingImage.addEventListener('animationend', () => {
+            speakingImage.classList.remove('bounce');
+        });
+
+    </script>
+</body>
+</html>
