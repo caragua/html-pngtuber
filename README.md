@@ -30,6 +30,10 @@ This is a tool targeted for desktop use, so it won't be mobile-friendly.
   * Easiest way to make it still work is just install Firefox Developer Edition and run it. Works unless minimized manually.
 - Streaming Software: OBS
 
+## Using with OBS (added on 20251205)
+1. You can now add a browser source in OBS to better integrate the screen with your video stream!
+2. Just open the main page (index.html) as usual and click on the "OBS Companion" button on the bottom, then copy the provided URL into OBS browser scene.
+
 ## Setup example for first-timers
 > This is a setup example. You can follow the following instructions, but not necessarily need to be exactly the same.
 1. Install [Firefox Developer Edition](https://www.firefox.com/channel/desktop/developer/)
